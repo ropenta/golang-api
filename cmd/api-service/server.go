@@ -1,19 +1,25 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/urfave/negroni"
 )
 
-// Station {station name, address, # bikes available, total # of docks}
 type Station struct {
 	StationName    string `json:"stationName"`
-	AddressLine    string `json:"stAddress1"`
-	TotalDocks     string `json:"totalDocks"`
-	AvailableDocks string `json:"availableDocks"`
+	TotalDocks     int    `json:"totalDocks"`
+	AvailableBikes int    `json:"availableBikes"`
+	StAddress1     string `json:"stAddress1"`
+}
+
+type StationData struct {
+	ExecutionTime   string    `json:"executionTime"`
+	StationBeanList []Station `json:"stationBeanList"`
 }
 
 func homePage(w http.ResponseWriter, req *http.Request) {
@@ -21,8 +27,34 @@ func homePage(w http.ResponseWriter, req *http.Request) {
 }
 
 func getStations(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "Here are the stations:")
-
+	urlEndpoint := "https://feeds.citibikenyc.com/stations/stations.json"
+	req, err := http.NewRequest(http.MethodGet, urlEndpoint, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	client := http.Client{}
+	res, getErr := client.Do(req)
+	if getErr != nil {
+		log.Fatal(getErr)
+	}
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
+	body, readErr := ioutil.ReadAll(res.Body)
+	if readErr != nil {
+		log.Fatal(readErr)
+	}
+	stationData := StationData{}
+	jsonErr := json.Unmarshal(body, &stationData)
+	if jsonErr != nil {
+		log.Fatalf("unable to parse value: %q, error: %s", string(body), jsonErr.Error())
+	}
+	stations := stationData.StationBeanList
+	for i := 0; i < len(stations); i++ {
+		response := fmt.Sprintf("StationName: %s, TotalDocks: %d, AvailableBikes: %d, Address: %s\n", stations[i].StationName, stations[i].TotalDocks, stations[i].AvailableBikes, stations[i].StAddress1)
+		fmt.Fprintf(w, response)
+	}
+	fmt.Println(stations[0].TotalDocks)
 }
 
 func handleRequests() {
