@@ -8,16 +8,20 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
+)
+
+const (
+	itemsPerPage = 20
 )
 
 type Station struct {
 	StationName    string `json:"stationName"`
 	TotalDocks     int    `json:"totalDocks"`
 	StatusValue    string `json:"statusValue"`
-	StatusKey      int    `json:"statusKey"`
 	AvailableBikes int    `json:"availableBikes"`
 	StAddress1     string `json:"stAddress1"`
 }
@@ -74,9 +78,9 @@ func getStartAndEndIndices(startResults int, endResults int, pageInfo string) (s
 		}
 	}
 
-	if page > 0 && (page-1)*20 <= endResults {
-		startResults += (page - 1) * 20
-		endResults = min(startResults+20, endResults)
+	if page > 0 && (page-1)*itemsPerPage <= endResults {
+		startResults += (page - 1) * itemsPerPage
+		endResults = min(startResults+itemsPerPage, endResults)
 	}
 	return startResults, endResults
 }
@@ -96,7 +100,7 @@ func getAllStations(w http.ResponseWriter, req *http.Request) {
 	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
 
 	for i := startResults; i < endResults; i++ {
-		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, StatusKey: %d, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].StatusKey, stations[i].AvailableBikes, stations[i].StAddress1)
+		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].AvailableBikes, stations[i].StAddress1)
 		fmt.Fprintf(w, response)
 	}
 	fmt.Println(stations[0].TotalDocks)
@@ -118,7 +122,7 @@ func getInServiceStations(w http.ResponseWriter, req *http.Request) {
 	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
 
 	for i := startResults; i < endResults; i++ {
-		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, StatusKey: %d, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].StatusKey, stations[i].AvailableBikes, stations[i].StAddress1)
+		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].AvailableBikes, stations[i].StAddress1)
 		fmt.Fprintf(w, response)
 	}
 }
@@ -139,7 +143,28 @@ func getNotInServiceStations(w http.ResponseWriter, req *http.Request) {
 	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
 
 	for i := startResults; i < endResults; i++ {
-		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, StatusKey: %d, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].StatusKey, stations[i].AvailableBikes, stations[i].StAddress1)
+		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].AvailableBikes, stations[i].StAddress1)
+		fmt.Fprintf(w, response)
+	}
+}
+
+func searchStations(w http.ResponseWriter, req *http.Request) {
+	allStations := getStations()
+	var matchingStations []Station
+	searchstring := strings.ToLower(mux.Vars(req)["searchstring"])
+
+	for _, v := range allStations {
+		if strings.Contains(strings.ToLower(v.StAddress1), searchstring) || strings.Contains(strings.ToLower(v.StationName), searchstring) {
+			matchingStations = append(matchingStations, v)
+		}
+	}
+
+	stations := matchingStations
+	startResults := 0
+	endResults := len(stations)
+
+	for i := startResults; i < endResults; i++ {
+		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].AvailableBikes, stations[i].StAddress1)
 		fmt.Fprintf(w, response)
 	}
 }
@@ -152,6 +177,7 @@ func handleRequests() {
 	router.Methods("GET").Path("/stations/in-service").Queries("path", "{[0-9]*?}").HandlerFunc(getInServiceStations)
 	router.Methods("GET").Path("/stations/not-in-service").HandlerFunc(getNotInServiceStations)
 	router.Methods("GET").Path("/stations/not-in-service").Queries("path", "{[0-9]*?}").HandlerFunc(getNotInServiceStations)
+	router.Methods("GET").Path("/stations/{searchstring}").HandlerFunc(searchStations)
 
 	n := negroni.Classic() // Includes some default middlewares
 	n.UseHandler(router)
