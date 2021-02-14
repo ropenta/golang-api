@@ -87,7 +87,7 @@ func getStartAndEndIndices(startResults int, endResults int, pageInfo string) (s
 	return startResults, endResults
 }
 
-func buildStationArry(stations []Station, startResults int, endResults int) (stationArray []Station) {
+func buildStationArry(stations []Station, startResults int, endResults int) []Station {
 	var stationInfo []Station
 	for i := startResults; i < endResults; i++ {
 		station := stations[i]
