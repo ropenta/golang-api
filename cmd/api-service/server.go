@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -19,13 +18,13 @@ const (
 )
 
 type Station struct {
-	ID             int    `json:"id"`
-	StationName    string `json:"stationName"`
-	AvailableDocks int    `json:"availableDocks"`
-	TotalDocks     int    `json:"totalDocks"`
-	StatusValue    string `json:"statusValue"`
-	AvailableBikes int    `json:"availableBikes"`
-	StAddress1     string `json:"stAddress1"`
+	ID             int    `json:"id,omitempty"`
+	StationName    string `json:"stationName,omitempty"`
+	AvailableDocks int    `json:"availableDocks,omitempty"`
+	TotalDocks     int    `json:"totalDocks,omitempty"`
+	StatusValue    string `json:"statusValue,omitempty"`
+	AvailableBikes int    `json:"availableBikes,omitempty"`
+	StAddress1     string `json:"stAddress1,omitempty"`
 }
 
 type StationData struct {
@@ -88,23 +87,31 @@ func getStartAndEndIndices(startResults int, endResults int, pageInfo string) (s
 	return startResults, endResults
 }
 
+func buildStationArry(stations []Station, startResults int, endResults int) (stationArray []Station) {
+	var stationInfo []Station
+	for i := startResults; i < endResults; i++ {
+		station := stations[i]
+		station.AvailableBikes = 0
+		station.ID = 0
+		station.StatusValue = ""
+		stationInfo = append(stationInfo, station)
+	}
+	return stationInfo
+}
+
 func getAllStations(w http.ResponseWriter, req *http.Request) {
 	stations := getStations()
-
+	pageInfo := req.URL.Query().Get("page")
 	startResults := 0
 	endResults := len(stations)
-	fmt.Println("GET params were:", req.URL.Query())
-	fmt.Println(req.URL)
-	pageInfo := req.URL.Query().Get("page")
-	fmt.Println(reflect.TypeOf(pageInfo))
-
 	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
 
-	for i := startResults; i < endResults; i++ {
-		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].AvailableBikes, stations[i].StAddress1)
-		fmt.Fprintf(w, response)
+	var stationInfo []Station = buildStationArry(stations, startResults, endResults)
+	stationMarshal, marshalErr := json.MarshalIndent(stationInfo, "", "    ")
+	if marshalErr != nil {
+		log.Fatal("Error marshaling struct to JSON")
 	}
-	fmt.Println(stations[0].TotalDocks)
+	fmt.Fprint(w, string(stationMarshal))
 }
 
 func getInServiceStations(w http.ResponseWriter, req *http.Request) {
@@ -117,15 +124,17 @@ func getInServiceStations(w http.ResponseWriter, req *http.Request) {
 	}
 
 	stations := inServiceStations
+	pageInfo := req.URL.Query().Get("page")
 	startResults := 0
 	endResults := len(stations)
-	pageInfo := req.URL.Query().Get("page")
 	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
 
-	for i := startResults; i < endResults; i++ {
-		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].AvailableBikes, stations[i].StAddress1)
-		fmt.Fprintf(w, response)
+	var stationInfo []Station = buildStationArry(stations, startResults, endResults)
+	stationMarshal, marshalErr := json.MarshalIndent(stationInfo, "", "    ")
+	if marshalErr != nil {
+		log.Fatal("Error marshaling struct to JSON")
 	}
+	fmt.Fprint(w, string(stationMarshal))
 }
 
 func getNotInServiceStations(w http.ResponseWriter, req *http.Request) {
@@ -138,15 +147,17 @@ func getNotInServiceStations(w http.ResponseWriter, req *http.Request) {
 	}
 
 	stations := notInServiceStations
+	pageInfo := req.URL.Query().Get("page")
 	startResults := 0
 	endResults := len(stations)
-	pageInfo := req.URL.Query().Get("page")
 	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
 
-	for i := startResults; i < endResults; i++ {
-		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].AvailableBikes, stations[i].StAddress1)
-		fmt.Fprintf(w, response)
+	var stationInfo []Station = buildStationArry(stations, startResults, endResults)
+	stationMarshal, marshalErr := json.MarshalIndent(stationInfo, "", "    ")
+	if marshalErr != nil {
+		log.Fatal("Error marshaling struct to JSON")
 	}
+	fmt.Fprint(w, string(stationMarshal))
 }
 
 func searchStations(w http.ResponseWriter, req *http.Request) {
@@ -164,10 +175,12 @@ func searchStations(w http.ResponseWriter, req *http.Request) {
 	startResults := 0
 	endResults := len(stations)
 
-	for i := startResults; i < endResults; i++ {
-		response := fmt.Sprintf("%d: StationName: %s, TotalDocks: %d, StatusValue: %s, AvailableBikes: %d, Address: %s\n", i, stations[i].StationName, stations[i].TotalDocks, stations[i].StatusValue, stations[i].AvailableBikes, stations[i].StAddress1)
-		fmt.Fprintf(w, response)
+	var stationInfo []Station = buildStationArry(stations, startResults, endResults)
+	stationMarshal, marshalErr := json.MarshalIndent(stationInfo, "", "    ")
+	if marshalErr != nil {
+		log.Fatal("Error marshaling struct to JSON")
 	}
+	fmt.Fprint(w, string(stationMarshal))
 }
 
 func returnBikes(w http.ResponseWriter, req *http.Request) {
@@ -205,13 +218,10 @@ func returnBikes(w http.ResponseWriter, req *http.Request) {
 func handleRequests() {
 	router := mux.NewRouter()
 	router.Methods("GET").Path("/stations").HandlerFunc(getAllStations)
-	router.Methods("GET").Path("/stations").Queries("path", "{[0-9]*?}").HandlerFunc(getAllStations)
 	router.Methods("GET").Path("/stations/in-service").HandlerFunc(getInServiceStations)
-	router.Methods("GET").Path("/stations/in-service").Queries("path", "{[0-9]*?}").HandlerFunc(getInServiceStations)
 	router.Methods("GET").Path("/stations/not-in-service").HandlerFunc(getNotInServiceStations)
-	router.Methods("GET").Path("/stations/not-in-service").Queries("path", "{[0-9]*?}").HandlerFunc(getNotInServiceStations)
 	router.Methods("GET").Path("/stations/{searchstring}").HandlerFunc(searchStations)
-	router.Path("/stations/{stationid}/{bikestoreturn}").HandlerFunc(returnBikes)
+	router.Methods("GET").Path("/stations/{stationid}/{bikestoreturn}").HandlerFunc(returnBikes)
 
 	n := negroni.Classic() // Includes some default middlewares
 	n.UseHandler(router)
