@@ -34,8 +34,8 @@ type StationData struct {
 }
 
 type DockableInfo struct {
-	dockable bool
-	message  string
+	Dockable bool   `json:"dockable"`
+	Message  string `json:"message"`
 }
 
 func min(a, b int) int {
@@ -90,8 +90,6 @@ func getStartAndEndIndices(startResults int, endResults int, pageInfo string) (s
 
 func getAllStations(w http.ResponseWriter, req *http.Request) {
 	stations := getStations()
-
-	// u, err := router.Get("YourHandler").URL("id", id, "key", key)
 
 	startResults := 0
 	endResults := len(stations)
@@ -192,15 +190,16 @@ func returnBikes(w http.ResponseWriter, req *http.Request) {
 		log.Fatal("Station not found. Please enter a valid station id.")
 	}
 	dockable := false
-	message := fmt.Sprintf("There are %d available docks. You cannot return all %d of your bikes.", station.AvailableDocks, numBikesToReturn)
+	message := fmt.Sprintf("You cannot return all %d of your bikes. There are %d available docks.", numBikesToReturn, station.AvailableDocks)
 	if numBikesToReturn <= station.AvailableDocks {
 		dockable = true
-		message = fmt.Sprintf("There are %d available docks. You are able to return all %d of your bikes.", station.AvailableDocks, numBikesToReturn)
+		message = fmt.Sprintf("You are able to return all %d of your bikes. There are %d available docks.", numBikesToReturn, station.AvailableDocks)
 	}
-
-	m := DockableInfo{dockable, message}
-	fmt.Fprintf(w, fmt.Sprintf("%t\n", dockable))
-	fmt.Fprintf(w, m.message)
+	dockableMarshal, err := json.MarshalIndent(DockableInfo{Dockable: dockable, Message: message}, "", "    ")
+	if err != nil {
+		log.Fatal("Error marshaling struct to JSON")
+	}
+	fmt.Fprint(w, string(dockableMarshal))
 }
 
 func handleRequests() {
@@ -212,7 +211,7 @@ func handleRequests() {
 	router.Methods("GET").Path("/stations/not-in-service").HandlerFunc(getNotInServiceStations)
 	router.Methods("GET").Path("/stations/not-in-service").Queries("path", "{[0-9]*?}").HandlerFunc(getNotInServiceStations)
 	router.Methods("GET").Path("/stations/{searchstring}").HandlerFunc(searchStations)
-	router.Methods("GET").Path("/stations/{stationid}/{bikestoreturn}").HandlerFunc(returnBikes)
+	router.Path("/stations/{stationid}/{bikestoreturn}").HandlerFunc(returnBikes)
 
 	n := negroni.Classic() // Includes some default middlewares
 	n.UseHandler(router)
