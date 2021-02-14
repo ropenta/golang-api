@@ -19,7 +19,9 @@ const (
 )
 
 type Station struct {
+	ID             int    `json:"id"`
 	StationName    string `json:"stationName"`
+	AvailableDocks int    `json:"availableDocks"`
 	TotalDocks     int    `json:"totalDocks"`
 	StatusValue    string `json:"statusValue"`
 	AvailableBikes int    `json:"availableBikes"`
@@ -31,15 +33,16 @@ type StationData struct {
 	StationBeanList []Station `json:"stationBeanList"`
 }
 
+type DockableInfo struct {
+	dockable bool
+	message  string
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
-}
-
-func homePage(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "Welcome to the API home page!")
 }
 
 func getStations() []Station {
@@ -169,6 +172,37 @@ func searchStations(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func returnBikes(w http.ResponseWriter, req *http.Request) {
+	stationID := strings.ToLower(mux.Vars(req)["stationid"])
+	numBikesToReturn, numError := strconv.Atoi(mux.Vars(req)["bikestoreturn"])
+	if numError != nil {
+		fmt.Println("error converting string to int")
+		return
+	}
+	stations := getStations()
+
+	station := Station{}
+	for _, v := range stations {
+		if strconv.Itoa(v.ID) == stationID {
+			station = v
+			break
+		}
+	}
+	if strconv.Itoa(station.ID) == "" {
+		log.Fatal("Station not found. Please enter a valid station id.")
+	}
+	dockable := false
+	message := fmt.Sprintf("There are %d available docks. You cannot return all %d of your bikes.", station.AvailableDocks, numBikesToReturn)
+	if numBikesToReturn <= station.AvailableDocks {
+		dockable = true
+		message = fmt.Sprintf("There are %d available docks. You are able to return all %d of your bikes.", station.AvailableDocks, numBikesToReturn)
+	}
+
+	m := DockableInfo{dockable, message}
+	fmt.Fprintf(w, fmt.Sprintf("%t\n", dockable))
+	fmt.Fprintf(w, m.message)
+}
+
 func handleRequests() {
 	router := mux.NewRouter()
 	router.Methods("GET").Path("/stations").HandlerFunc(getAllStations)
@@ -178,6 +212,7 @@ func handleRequests() {
 	router.Methods("GET").Path("/stations/not-in-service").HandlerFunc(getNotInServiceStations)
 	router.Methods("GET").Path("/stations/not-in-service").Queries("path", "{[0-9]*?}").HandlerFunc(getNotInServiceStations)
 	router.Methods("GET").Path("/stations/{searchstring}").HandlerFunc(searchStations)
+	router.Methods("GET").Path("/stations/{stationid}/{bikestoreturn}").HandlerFunc(returnBikes)
 
 	n := negroni.Classic() // Includes some default middlewares
 	n.UseHandler(router)
