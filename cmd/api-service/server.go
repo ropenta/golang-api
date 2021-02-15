@@ -18,12 +18,12 @@ const (
 
 type Station struct {
 	ID             int    `json:"id,omitempty"`
-	StationName    string `json:"stationName,omitempty"`
+	StationName    string `json:"stationName"`
 	AvailableDocks int    `json:"availableDocks,omitempty"`
-	TotalDocks     int    `json:"totalDocks,omitempty"`
+	TotalDocks     int    `json:"totalDocks"`
 	StatusValue    string `json:"statusValue,omitempty"`
-	AvailableBikes int    `json:"availableBikes,omitempty"`
-	StAddress1     string `json:"stAddress1,omitempty"`
+	AvailableBikes int    `json:"availableBikes"`
+	StAddress1     string `json:"stAddress1"`
 }
 
 type StationData struct {
@@ -91,7 +91,8 @@ func buildStationArry(stations []Station, startResults int, endResults int) []St
 	var stationInfo []Station
 	for i := startResults; i < endResults; i++ {
 		station := stations[i]
-		station.AvailableBikes = 0
+		// remove these fields from view in JSON
+		station.AvailableDocks = 0
 		station.ID = 0
 		station.StatusValue = ""
 		stationInfo = append(stationInfo, station)
@@ -198,10 +199,13 @@ func returnBikes(w http.ResponseWriter, req *http.Request) {
 	}
 	dockable := false
 	message := fmt.Sprintf("You cannot return all %d of your bikes. There are %d available docks.", numBikesToReturn, station.AvailableDocks)
-	if numBikesToReturn <= station.AvailableDocks {
+	if station.StatusValue == "Not In Service" {
+		message = fmt.Sprintf("Station %s with ID %d is Not In Service. Please choose an In Service station.", station.StationName, station.ID)
+	} else if numBikesToReturn <= station.AvailableDocks {
 		dockable = true
 		message = fmt.Sprintf("You are able to return all %d of your bikes. There are %d available docks.", numBikesToReturn, station.AvailableDocks)
 	}
+
 	dockableMarshal, err := json.MarshalIndent(DockableInfo{Dockable: dockable, Message: message}, "", "    ")
 	if err != nil {
 		log.Fatal("Error marshaling struct to JSON")

@@ -93,37 +93,38 @@ func TestGetAllStations(t *testing.T) {
 	expected := `[
     {
         "stationName": "W 52 St \u0026 11 Ave",
-        "availableDocks": 32,
         "totalDocks": 39,
+        "availableBikes": 7,
         "stAddress1": "W 52 St \u0026 11 Ave"
     },
     {
         "stationName": "W 54 St \u0026 9 Ave",
-        "availableDocks": 3,
         "totalDocks": 3,
+        "availableBikes": 0,
         "stAddress1": "W 54 St \u0026 9 Ave"
     },
     {
         "stationName": "Franklin St \u0026 W Broadway",
         "totalDocks": 33,
+        "availableBikes": 33,
         "stAddress1": "Franklin St \u0026 W Broadway"
     },
     {
         "stationName": "St James Pl \u0026 Pearl St",
-        "availableDocks": 27,
         "totalDocks": 27,
+        "availableBikes": 0,
         "stAddress1": "St James Pl \u0026 Pearl St"
     },
     {
         "stationName": "Atlantic Ave \u0026 Fort Greene Pl",
-        "availableDocks": 21,
         "totalDocks": 62,
+        "availableBikes": 40,
         "stAddress1": "Atlantic Ave \u0026 Fort Greene Pl"
     },
     {
         "stationName": "W 17 St \u0026 8 Ave",
-        "availableDocks": 19,
         "totalDocks": 39,
+        "availableBikes": 19,
         "stAddress1": "W 17 St \u0026 8 Ave"
     }
 ]`
@@ -154,31 +155,32 @@ func TestGetInServiceStations(t *testing.T) {
 	expected := `[
     {
         "stationName": "W 52 St \u0026 11 Ave",
-        "availableDocks": 32,
         "totalDocks": 39,
+        "availableBikes": 7,
         "stAddress1": "W 52 St \u0026 11 Ave"
     },
     {
         "stationName": "Franklin St \u0026 W Broadway",
         "totalDocks": 33,
+        "availableBikes": 33,
         "stAddress1": "Franklin St \u0026 W Broadway"
     },
     {
         "stationName": "St James Pl \u0026 Pearl St",
-        "availableDocks": 27,
         "totalDocks": 27,
+        "availableBikes": 0,
         "stAddress1": "St James Pl \u0026 Pearl St"
     },
     {
         "stationName": "Atlantic Ave \u0026 Fort Greene Pl",
-        "availableDocks": 21,
         "totalDocks": 62,
+        "availableBikes": 40,
         "stAddress1": "Atlantic Ave \u0026 Fort Greene Pl"
     },
     {
         "stationName": "W 17 St \u0026 8 Ave",
-        "availableDocks": 19,
         "totalDocks": 39,
+        "availableBikes": 19,
         "stAddress1": "W 17 St \u0026 8 Ave"
     }
 ]`
@@ -209,8 +211,8 @@ func TestGetNotInServiceStations(t *testing.T) {
 	expected := `[
     {
         "stationName": "W 54 St \u0026 9 Ave",
-        "availableDocks": 3,
         "totalDocks": 3,
+        "availableBikes": 0,
         "stAddress1": "W 54 St \u0026 9 Ave"
     }
 ]`
@@ -242,8 +244,8 @@ func TestSearchStations(t *testing.T) {
 	expected := `[
     {
         "stationName": "Atlantic Ave \u0026 Fort Greene Pl",
-        "availableDocks": 21,
         "totalDocks": 62,
+        "availableBikes": 40,
         "stAddress1": "Atlantic Ave \u0026 Fort Greene Pl"
     }
 ]`
@@ -307,6 +309,37 @@ func TestReturnBikesNotDockable(t *testing.T) {
 	expected := `{
     "dockable": false,
     "message": "You cannot return all 22 of your bikes. There are 21 available docks."
+}`
+
+	if w.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			w.Body.String(), expected)
+	}
+}
+
+func TestReturnBikesNotInServiceStation(t *testing.T) {
+	jsonBody := ioutil.NopCloser(bytes.NewReader([]byte(allStationsJSON)))
+	GetDoFunc = func(*http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 200,
+			Body:       jsonBody,
+		}, nil
+	}
+
+	req, err := http.NewRequest("GET", "/stations/423/1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	Router().ServeHTTP(w, req)
+
+	if status := w.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v but wanted %v", status, http.StatusOK)
+	}
+
+	expected := `{
+    "dockable": false,
+    "message": "Station W 54 St \u0026 9 Ave with ID 423 is Not In Service. Please choose an In Service station."
 }`
 
 	if w.Body.String() != expected {
