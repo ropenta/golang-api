@@ -75,7 +75,7 @@ func getStartAndEndIndices(numStations int, pageInfo string) (start int, end int
 	page, pageErr := strconv.Atoi(pageInfo)
 	if pageInfo != "" {
 		if pageErr != nil {
-			fmt.Println("error converting string to int")
+			fmt.Println("Invalid page number. Showing all results.")
 			return startResults, endResults
 		}
 	}
