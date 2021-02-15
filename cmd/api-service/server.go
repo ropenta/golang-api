@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/urfave/negroni"
 )
 
 const (
@@ -50,8 +49,7 @@ func getStations() []Station {
 	if urlErr != nil {
 		log.Fatal(urlErr)
 	}
-	client := http.Client{}
-	res, getErr := client.Do(stationReq)
+	res, getErr := Client.Do(stationReq)
 	if getErr != nil {
 		log.Fatal(getErr)
 	}
@@ -71,12 +69,14 @@ func getStations() []Station {
 	return stations
 }
 
-func getStartAndEndIndices(startResults int, endResults int, pageInfo string) (start int, end int) {
+func getStartAndEndIndices(numStations int, pageInfo string) (start int, end int) {
+	startResults := 0
+	endResults := numStations
 	page, pageErr := strconv.Atoi(pageInfo)
 	if pageInfo != "" {
 		if pageErr != nil {
 			fmt.Println("error converting string to int")
-			return
+			return startResults, endResults
 		}
 	}
 
@@ -102,9 +102,7 @@ func buildStationArry(stations []Station, startResults int, endResults int) []St
 func getAllStations(w http.ResponseWriter, req *http.Request) {
 	stations := getStations()
 	pageInfo := req.URL.Query().Get("page")
-	startResults := 0
-	endResults := len(stations)
-	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
+	startResults, endResults := getStartAndEndIndices(len(stations), pageInfo)
 
 	var stationInfo []Station = buildStationArry(stations, startResults, endResults)
 	stationMarshal, marshalErr := json.MarshalIndent(stationInfo, "", "    ")
@@ -125,9 +123,7 @@ func getInServiceStations(w http.ResponseWriter, req *http.Request) {
 
 	stations := inServiceStations
 	pageInfo := req.URL.Query().Get("page")
-	startResults := 0
-	endResults := len(stations)
-	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
+	startResults, endResults := getStartAndEndIndices(len(stations), pageInfo)
 
 	var stationInfo []Station = buildStationArry(stations, startResults, endResults)
 	stationMarshal, marshalErr := json.MarshalIndent(stationInfo, "", "    ")
@@ -148,9 +144,7 @@ func getNotInServiceStations(w http.ResponseWriter, req *http.Request) {
 
 	stations := notInServiceStations
 	pageInfo := req.URL.Query().Get("page")
-	startResults := 0
-	endResults := len(stations)
-	startResults, endResults = getStartAndEndIndices(startResults, endResults, pageInfo)
+	startResults, endResults := getStartAndEndIndices(len(stations), pageInfo)
 
 	var stationInfo []Station = buildStationArry(stations, startResults, endResults)
 	stationMarshal, marshalErr := json.MarshalIndent(stationInfo, "", "    ")
@@ -213,24 +207,4 @@ func returnBikes(w http.ResponseWriter, req *http.Request) {
 		log.Fatal("Error marshaling struct to JSON")
 	}
 	fmt.Fprint(w, string(dockableMarshal))
-}
-
-func handleRequests() {
-	router := mux.NewRouter()
-	router.Methods("GET").Path("/stations").HandlerFunc(getAllStations)
-	router.Methods("GET").Path("/stations/in-service").HandlerFunc(getInServiceStations)
-	router.Methods("GET").Path("/stations/not-in-service").HandlerFunc(getNotInServiceStations)
-	router.Methods("GET").Path("/stations/{searchstring}").HandlerFunc(searchStations)
-	router.Methods("GET").Path("/stations/{stationid}/{bikestoreturn}").HandlerFunc(returnBikes)
-
-	n := negroni.Classic() // Includes some default middlewares
-	n.UseHandler(router)
-
-	if err := http.ListenAndServe(":4000", n); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func main() {
-	handleRequests()
 }
