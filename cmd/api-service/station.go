@@ -281,7 +281,7 @@ func returnBikes(w http.ResponseWriter, req *http.Request) {
 	stationID := strings.ToLower(mux.Vars(req)["stationid"])
 	numBikesToReturn, numError := strconv.Atoi(mux.Vars(req)["bikestoreturn"])
 	if numError != nil {
-		invalidNumberMessage := "Invalid value for number of bikes to return. Please enter a valid station number."
+		invalidNumberMessage := "Invalid value for number of bikes to return. Please enter a valid number."
 		fmt.Fprint(w, invalidNumberMessage)
 		contextLogger.Error(invalidNumberMessage, numError)
 		return
