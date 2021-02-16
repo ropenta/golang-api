@@ -2,12 +2,6 @@
 
 default: test
 
-all:
-		make clean
-		make fmt
-		make build
-		make test
-
 clean:
 		go clean -cache -i ./...
 
@@ -22,3 +16,5 @@ test:
 
 run:
 		go run ./...
+
+all: clean fmt build test

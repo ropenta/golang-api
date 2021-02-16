@@ -1,8 +1,9 @@
 package main
 
 import (
-	"log"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
@@ -32,8 +33,10 @@ func handleRequests() {
 	n := negroni.Classic() // Includes some default middlewares
 	n.UseHandler(router)
 
+	log.SetFormatter(&log.JSONFormatter{})
+	log.Info("Starting server with port 4000")
 	if err := http.ListenAndServe(":4000", n); err != nil {
-		log.Fatal(err)
+		log.Fatal("Error starting server", err)
 	}
 }
 
