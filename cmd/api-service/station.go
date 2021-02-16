@@ -17,6 +17,7 @@ const (
 	itemsPerPage = 20
 )
 
+// Station - contains only the relevant fields for the endpoints
 type Station struct {
 	ID             int    `json:"id,omitempty"`
 	StationName    string `json:"stationName"`
@@ -27,16 +28,21 @@ type Station struct {
 	StAddress1     string `json:"stAddress1"`
 }
 
+// StationData - metadata information that follows the external JSON format
 type StationData struct {
 	ExecutionTime   string    `json:"executionTime"`
 	StationBeanList []Station `json:"stationBeanList"`
 }
 
+// DockableInfo - contains JSON fields needed for endpoint "/dockable/:stationid/:bikestoreturn"
 type DockableInfo struct {
 	Dockable bool   `json:"dockable"`
 	Message  string `json:"message"`
 }
 
+/*
+ * 	Returns minimum of two ints
+ */
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -44,6 +50,9 @@ func min(a, b int) int {
 	return b
 }
 
+/*
+ * 	Retrieves external JSON and unmarshals the data into []Station
+ */
 func getStations() []Station {
 	urlEndpoint := "https://feeds.citibikenyc.com/stations/stations.json"
 	log.SetFormatter(&log.JSONFormatter{})
@@ -76,6 +85,9 @@ func getStations() []Station {
 	return stations
 }
 
+/*
+ * 	Selects range of stations based on page information
+ */
 func getStartAndEndIndices(numStations int, pageInfo string) (start int, end int) {
 	startResults := 0
 	endResults := numStations
@@ -95,6 +107,10 @@ func getStartAndEndIndices(numStations int, pageInfo string) (start int, end int
 	return startResults, endResults
 }
 
+/*
+ * 	Updates []Station array to only contain relevant fields for displaying
+ * 	Relevant fields: station name, address, # bikes available, total # of docks.
+ */
 func buildStationArry(stations []Station, startResults int, endResults int) []Station {
 	var stationInfo []Station
 	for i := startResults; i < endResults; i++ {
@@ -108,6 +124,12 @@ func buildStationArry(stations []Station, startResults int, endResults int) []St
 	return stationInfo
 }
 
+/*
+ *	Endpoint: /stations
+ *
+ * 	Return an array of station objects where each object includes the
+ * 	station name, address, # bikes available, total # of docks.
+ */
 func getAllStations(w http.ResponseWriter, req *http.Request) {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.Info("Executing getAllStations entrypoint")
@@ -128,6 +150,12 @@ func getAllStations(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, string(stationMarshal))
 }
 
+/*
+ *	Endpoint: /stations/in-service
+ *
+ * 	Return only those stations that ARE in service
+ * 	Users can also paginate results
+ */
 func getInServiceStations(w http.ResponseWriter, req *http.Request) {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.Info("Executing getInServiceStations entrypoint")
@@ -156,6 +184,12 @@ func getInServiceStations(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, string(stationMarshal))
 }
 
+/*
+ *	Endpoint: /stations/not-in-service
+ *
+ * 	Return only those stations that are NOT in service
+ * 	Users can also paginate results
+ */
 func getNotInServiceStations(w http.ResponseWriter, req *http.Request) {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.Info("Executing getNotInServiceStations entrypoint")
@@ -184,6 +218,12 @@ func getNotInServiceStations(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, string(stationMarshal))
 }
 
+/*
+ *	Endpoint: /stations/:searchstring
+ *
+ * 	Performs a case-insensitive search through both the station name (stationName)
+ * 	and the street address (stAddress1) fields, returns matching results
+ */
 func searchStations(w http.ResponseWriter, req *http.Request) {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.Info("Executing searchStations entrypoint")
@@ -221,6 +261,12 @@ func searchStations(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, string(stationMarshal))
 }
 
+/*
+ *	Endpoint: /dockable/:stationid/:bikestoreturn
+ *
+ *	Returns boolean field denoting if the client can return his or her bike(s),
+ *	and a message that explains why or why not.
+ */
 func returnBikes(w http.ResponseWriter, req *http.Request) {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.Info("Executing returnBikes entrypoint")
@@ -235,7 +281,9 @@ func returnBikes(w http.ResponseWriter, req *http.Request) {
 	stationID := strings.ToLower(mux.Vars(req)["stationid"])
 	numBikesToReturn, numError := strconv.Atoi(mux.Vars(req)["bikestoreturn"])
 	if numError != nil {
-		contextLogger.Error("Error converting string to int", numError)
+		invalidNumberMessage := "Invalid value for number of bikes to return. Please enter a valid station number."
+		fmt.Fprint(w, invalidNumberMessage)
+		contextLogger.Error(invalidNumberMessage, numError)
 		return
 	}
 	stations := getStations()
